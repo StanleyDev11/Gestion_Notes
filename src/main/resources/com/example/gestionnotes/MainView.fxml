@@ -1,0 +1,248 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.Tooltip?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Priority?>
+<?import javafx.scene.layout.RowConstraints?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+<?import javafx.scene.control.Accordion?>
+<?import javafx.scene.control.TitledPane?>
+<?import javafx.scene.control.TabPane?>
+<?import javafx.scene.control.Tab?>
+<?import javafx.scene.layout.FlowPane?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.control.Tooltip?>
+<?import de.jensd.fx.glyphs.fontawesome.FontAwesomeIconView?>
+
+<BorderPane minHeight="600.0" minWidth="1000.0"
+            prefHeight="800.0" prefWidth="1200.0" stylesheets="@style.css"
+            xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+            xmlns:fa="http://kordamp.org/javafx/fontawesome/"
+            fx:controller="com.example.gestionnotes.controller.MainController">
+
+    <!-- En-tête avec titre et filtres -->
+    <top>
+        <VBox alignment="CENTER" spacing="15" styleClass="header-container">
+            <Label styleClass="main-title" text="Gestion des Notes des Étudiants">
+                <font>
+                    <Font name="System Bold" size="28.0" />
+                </font>
+                <padding>
+                    <Insets bottom="10.0" left="10.0" right="10.0" top="20.0" />
+                </padding>
+            </Label>
+
+            <HBox alignment="CENTER" spacing="20" styleClass="filter-container">
+                <HBox alignment="CENTER_LEFT" spacing="10">
+                    <Label styleClass="filter-label" text="Filière:" />
+                    <ComboBox fx:id="filiereFilterComboBox" prefWidth="250.0"
+                              promptText="Sélectionnez une filière" styleClass="filter-combo" />
+                </HBox>
+
+                <Region HBox.hgrow="ALWAYS" />
+
+                <Label fx:id="clockLabel" styleClass="clock-label" />
+            </HBox>
+            <Separator styleClass="header-separator" />
+            <Label fx:id="statusMessageLabel" styleClass="status-message" />
+        </VBox>
+    </top>
+
+    <!-- Contenu principal -->
+    <center>
+        <HBox spacing="20" styleClass="main-container">
+            <padding>
+                <Insets bottom="15.0" left="15.0" right="15.0" top="15.0" />
+            </padding>
+
+            <!-- Panneau des étudiants -->
+            <VBox spacing="10" prefWidth="350" styleClass="student-panel">
+                <HBox alignment="CENTER_LEFT" spacing="10" styleClass="panel-header">
+                    <Label styleClass="panel-title" text="Étudiants" />
+                    <Label fx:id="studentCountLabel" styleClass="counter-label" text="(0)" />
+                </HBox>
+
+                <HBox alignment="CENTER_LEFT" spacing="10" styleClass="search-container">
+                    <TextField fx:id="searchField" promptText="Rechercher un étudiant..."
+                               styleClass="search-field" HBox.hgrow="ALWAYS" />
+                    <Button styleClass="icon-button">
+                        <tooltip>
+                            <Tooltip text="Rechercher" />
+                        </tooltip>
+                        <graphic>
+                            <Label text="🔍" /> <!-- Using a simple emoji as a placeholder -->
+                        </graphic>
+                    </Button>
+                </HBox>
+
+                <ScrollPane fitToWidth="true" styleClass="student-scroll-pane">
+                    <FlowPane fx:id="studentCardsContainer" hgap="8" vgap="8" styleClass="student-cards-container">
+                        <padding>
+                            <Insets bottom="10.0" left="5.0" right="5.0" top="5.0" />
+                        </padding>
+                    </FlowPane>
+                </ScrollPane>
+            </VBox>
+
+            <!-- Right side with tabs -->
+            <TabPane fx:id="tabPane" HBox.hgrow="ALWAYS" styleClass="notes-panel">
+                <tabs>
+                    <Tab text="Saisie des notes">
+                        <graphic>
+                            <FontAwesomeIconView glyphName="PENCIL" size="16" />
+                        </graphic>
+                        <content>
+                            <VBox spacing="15">
+                                <!-- En-tête étudiant sélectionné -->
+                                <VBox spacing="5" styleClass="selected-student-header" fx:id="selectedStudentHeader">
+                                    <Label fx:id="selectedStudentLabel" styleClass="selected-student-label" text="Aucun étudiant sélectionné" />
+                                    <HBox spacing="10">
+                                        <Label fx:id="studentInfoLabel" styleClass="student-info" text="" />
+                                        <Label fx:id="studentAverageLabel" styleClass="student-average" text="" />
+                                    </HBox>
+                                </VBox>
+
+                                <!-- Formulaire de saisie des notes -->
+                                <Accordion styleClass="notes-form-accordion">
+                                    <panes>
+                                        <TitledPane fx:id="formAccordion" animated="false" styleClass="form-titled-pane" text="Saisie des notes">
+                                            <VBox spacing="12">
+                                                <GridPane hgap="15.0" vgap="12.0" styleClass="form-grid">
+                                                    <columnConstraints>
+                                                        <ColumnConstraints percentWidth="30" />
+                                                        <ColumnConstraints percentWidth="70" />
+                                                    </columnConstraints>
+
+                                                    <Label text="Matière *:" styleClass="form-label"
+                                                           GridPane.columnIndex="0" GridPane.rowIndex="0" />
+                                                    <TextField fx:id="matiereTextField" promptText="Saisissez une matière"
+                                                               styleClass="form-textfield" GridPane.columnIndex="1" GridPane.rowIndex="0" />
+
+                                                    <Label text="Note Devoir (40%) *:" styleClass="form-label"
+                                                           GridPane.columnIndex="0" GridPane.rowIndex="1" />
+                                                    <TextField fx:id="noteDevoirTextField" styleClass="form-textfield"
+                                                               GridPane.columnIndex="1" GridPane.rowIndex="1" />
+
+                                                    <Label text="Note Examen (60%) *:" styleClass="form-label"
+                                                           GridPane.columnIndex="0" GridPane.rowIndex="2" />
+                                                    <TextField fx:id="noteExamenTextField" styleClass="form-textfield"
+                                                               GridPane.columnIndex="1" GridPane.rowIndex="2" />
+
+                                                    <Label text="Moyenne:" styleClass="form-label"
+                                                           GridPane.columnIndex="0" GridPane.rowIndex="3" />
+                                                    <Label fx:id="moyenneCalculatedLabel" styleClass="calculated-value"
+                                                           text="-" GridPane.columnIndex="1" GridPane.rowIndex="3" />
+
+                                                    <Label text="Statut:" styleClass="form-label"
+                                                           GridPane.columnIndex="0" GridPane.rowIndex="4" />
+                                                    <Label fx:id="statutValidationLabel" styleClass="calculated-value"
+                                                           text="-" GridPane.columnIndex="1" GridPane.rowIndex="4" />
+                                                </GridPane>
+
+                                                <HBox alignment="CENTER_RIGHT" spacing="10" styleClass="form-buttons-container">
+                                                    <Button fx:id="calculateButton" mnemonicParsing="false"
+                                                            onAction="#handleCalculateButtonAction"
+                                                            styleClass="secondary-button">
+                                                        <tooltip><Tooltip text="Calculer" /></tooltip>
+                                                    </Button>
+                                                    <Button fx:id="addButton" mnemonicParsing="false"
+                                                            onAction="#handleAddButtonAction"
+                                                            styleClass="primary-button">
+                                                        <tooltip><Tooltip text="Ajouter Note" /></tooltip>
+                                                    </Button>
+                                                    <Button fx:id="updateButton" mnemonicParsing="false"
+                                                            onAction="#handleUpdateButtonAction"
+                                                            styleClass="secondary-button">
+                                                        <tooltip><Tooltip text="Modifier" /></tooltip>
+                                                    </Button>
+                                                    <Button fx:id="deleteButton" mnemonicParsing="false"
+                                                            onAction="#handleDeleteButtonAction"
+                                                            styleClass="danger-button">
+                                                        <tooltip><Tooltip text="Supprimer" /></tooltip>
+                                                    </Button>
+                                                    <Button fx:id="clearButton" mnemonicParsing="false"
+                                                            onAction="#handleClearButtonAction"
+                                                            styleClass="secondary-button">
+                                                        <tooltip><Tooltip text="Effacer" /></tooltip>
+                                                    </Button>
+                                                </HBox>
+                                            </VBox>
+                                        </TitledPane>
+                                    </panes>
+                                </Accordion>
+                            </VBox>
+                        </content>
+                    </Tab>
+                    <Tab text="Tableau des notes">
+                        <graphic>
+                            <FontAwesomeIconView glyphName="TABLE" size="16" />
+                        </graphic>
+                        <content>
+                            <VBox spacing="8" VBox.vgrow="ALWAYS">
+                                <HBox alignment="CENTER_LEFT">
+                                    <Label styleClass="panel-title" text="Notes de l'étudiant" />
+                                    <Label fx:id="notesCountLabel" styleClass="counter-label" text="(0 notes)" />
+                                </HBox>
+
+                                <TableView fx:id="tableViewNotes" styleClass="notes-table" VBox.vgrow="ALWAYS">
+                                    <columns>
+                                        <TableColumn fx:id="matiereColumn" prefWidth="200.0" text="Matière" />
+                                        <TableColumn fx:id="noteDevoirColumn" prefWidth="120.0" text="Devoir (40%)" />
+                                        <TableColumn fx:id="noteExamenColumn" prefWidth="120.0" text="Examen (60%)" />
+                                        <TableColumn fx:id="moyenneColumn" prefWidth="100.0" text="Moyenne" />
+                                        <TableColumn fx:id="statutValidationColumn" prefWidth="120.0" text="Statut" />
+                                        <TableColumn fx:id="actionsColumn" prefWidth="120.0" text="Actions" />
+                                    </columns>
+                                    <columnResizePolicy>
+                                        <TableView fx:constant="CONSTRAINED_RESIZE_POLICY" />
+                                    </columnResizePolicy>
+                                </TableView>
+                            </VBox>
+                        </content>
+                    </Tab>
+                    <Tab fx:id="studentManagementTab" text="Gérer les étudiants">
+                        <graphic>
+                            <FontAwesomeIconView glyphName="USERS" size="16" />
+                        </graphic>
+                        <content>
+                            <fx:include fx:id="studentView" source="/com/example/gestionnotes/StudentView.fxml" />
+                        </content>
+                    </Tab>
+                </tabs>
+            </TabPane>
+        </HBox>
+    </center>
+
+    <!-- Pied de page avec statistiques -->
+    <bottom>
+        <HBox alignment="CENTER" spacing="30" styleClass="footer-container">
+            <HBox alignment="CENTER" spacing="10">
+                <Label styleClass="footer-label" text="Étudiants:" />
+                <Label fx:id="totalStudentsLabel" styleClass="footer-value" text="0" />
+            </HBox>
+            <Separator orientation="VERTICAL" styleClass="footer-separator" />
+            <HBox alignment="CENTER" spacing="10">
+                <Label styleClass="footer-label" text="Moyenne générale:" />
+                <Label fx:id="globalAverageLabel" styleClass="footer-value" text="0.00" />
+            </HBox>
+            <Separator orientation="VERTICAL" styleClass="footer-separator" />
+            <HBox alignment="CENTER" spacing="10">
+                <Label styleClass="footer-label" text="Taux de réussite:" />
+                <Label fx:id="successRateLabel" styleClass="footer-value" text="0%" />
+            </HBox>
+        </HBox>
+    </bottom>
+</BorderPane>

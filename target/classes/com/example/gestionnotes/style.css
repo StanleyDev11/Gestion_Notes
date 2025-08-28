@@ -1,0 +1,372 @@
+/* Fichier CSS pour un style moderne et épuré (Bleu/Blanc) */
+
+/* Palette de couleurs */
+.root {
+    /* #2196F3: #2196F3; */
+    /* #BBDEFB: #BBDEFB; */
+    /* #F5F5F5: #F5F5F5; */
+    /* #212121: #212121; */
+    /* #FFFFFF: #FFFFFF; */
+    /* -fx-border-color: #9E9E9E; */
+    -fx-background-color: #F5F5F5; /* Direct value */
+}
+
+/* Style général pour le fond de l'application */
+.root {
+    -fx-background-color: #F5F5F5;
+    -fx-font-family: "Segoe UI", sans-serif;
+}
+
+/* Titres */
+.label.main-title {
+    -fx-font-size: 28px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #212121;
+}
+
+.label.title {
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #212121;
+}
+
+/* Sous-titres et labels importants */
+.label.header {
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #212121;
+}
+
+/* Conteneurs d'en-tête et de filtre */
+.header-container {
+    -fx-background-color: #FFFFFF;
+    -fx-padding: 15px 20px;
+    -fx-spacing: 10px;
+    -fx-alignment: center;
+}
+
+.filter-container {
+    -fx-alignment: center;
+    -fx-spacing: 15px;
+}
+
+.filter-label {
+    -fx-font-size: 14px;
+    -fx-text-fill: #212121;
+}
+
+.filter-combo {
+    -fx-background-color: #F5F5F5;
+    -fx-border-color: #9E9E9E;
+    -fx-border-width: 1px;
+    -fx-border-radius: 5px;
+    -fx-background-radius: 5px;
+}
+
+.header-separator {
+    -fx-background-color: gray; /* Temporarily changed to a direct color */
+    -fx-max-width: 90%;
+}
+
+/* Boutons */
+.button {
+    -fx-background-color: #2196F3;
+    -fx-text-fill: #FFFFFF;
+    -fx-font-size: 14px;
+    -fx-padding: 8px 15px;
+    -fx-border-radius: 5px;
+    -fx-background-radius: 5px;
+    
+}
+
+.button:hover {
+    -fx-background-color: derive(#2196F3, 20%);
+}
+
+.button:pressed {
+    -fx-background-color: derive(#2196F3, -20%);
+}
+
+.primary-button {
+    -fx-background-color: #2196F3;
+    -fx-text-fill: #FFFFFF;
+}
+
+.primary-button:hover {
+    -fx-background-color: derive(#2196F3, 20%);
+}
+
+.secondary-button {
+    -fx-background-color: #BBDEFB;
+    -fx-text-fill: #212121;
+}
+
+.secondary-button:hover {
+    -fx-background-color: derive(#BBDEFB, 20%);
+}
+
+.danger-button {
+    -fx-background-color: #F44336; /* Rouge Material Design */
+    -fx-text-fill: #FFFFFF;
+}
+
+.danger-button:hover {
+    -fx-background-color: derive(#F44336, 20%);
+}
+
+/* Boutons de gestion (ex: Gérer les Étudiants) */
+.management-button {
+    -fx-background-color: #2196F3;
+    -fx-text-fill: #FFFFFF;
+    -fx-font-size: 14px;
+    -fx-padding: 8px 15px;
+    -fx-border-radius: 5px;
+    -fx-background-radius: 5px;
+}
+
+.management-button:hover {
+    -fx-background-color: derive(#2196F3, 20%);
+}
+
+/* Champs de texte et ComboBox */
+.text-field, .combo-box {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #9E9E9E;
+    -fx-border-width: 1px;
+    -fx-border-radius: 5px;
+    -fx-background-radius: 5px;
+    -fx-padding: 5px;
+}
+
+.text-field:focused, .combo-box:focused {
+    -fx-border-color: #2196F3;
+    -fx-border-width: 2px;
+}
+
+/* Conteneur principal */
+.main-container {
+    -fx-background-color: #F5F5F5;
+}
+
+/* Panneau des étudiants */
+.student-panel {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #9E9E9E;
+    -fx-border-width: 1px;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
+    -fx-padding: 15px;
+}
+
+.panel-header {
+    -fx-padding: 0 0 10px 0;
+}
+
+.panel-title {
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #212121;
+}
+
+.counter-label {
+    -fx-font-size: 14px;
+    -fx-text-fill: #9E9E9E;
+}
+
+.search-container {
+    -fx-padding: 0 0 10px 0;
+}
+
+.search-field {
+    -fx-background-color: #F5F5F5;
+    -fx-border-color: #9E9E9E;
+    -fx-border-width: 1px;
+    -fx-border-radius: 5px;
+    -fx-background-radius: 5px;
+    -fx-padding: 5px;
+}
+
+.icon-button {
+    -fx-background-color: transparent;
+    -fx-padding: 5px;
+}
+
+.icon-button:hover {
+    -fx-background-color: #BBDEFB;
+}
+
+.student-scroll-pane {
+    -fx-background-color: transparent;
+}
+
+.student-cards-container {
+    -fx-background-color: transparent;
+}
+
+/* Étudiant Card */
+.student-card {
+    -fx-background-color: #BBDEFB;
+    -fx-text-fill: #212121;
+    -fx-border-color: derive(#BBDEFB, -20%);
+    -fx-border-width: 1px;
+    -fx-border-radius: 5px;
+    -fx-background-radius: 5px;
+    -fx-padding: 10px;
+    -fx-alignment: center;
+    -fx-font-size: 12px;
+    -fx-pref-height: 60px; /* Hauteur fixe pour les cartes */
+    -fx-wrap-text: true;
+}
+
+
+
+
+
+/* Panneau de gestion des notes */
+.notes-panel {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #9E9E9E;
+    -fx-border-width: 1px;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
+    -fx-padding: 15px;
+}
+
+.selected-student-header {
+    -fx-padding: 0 0 10px 0;
+}
+
+.label.selected-student-label {
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #2196F3;
+    -fx-padding: 5px 0;
+}
+
+.student-info {
+    -fx-font-size: 14px;
+    -fx-text-fill: #212121;
+}
+
+.student-average {
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #2196F3;
+}
+
+/* Formulaire de saisie des notes */
+.notes-form-accordion .titled-pane .title {
+    -fx-background-color: #BBDEFB;
+    -fx-text-fill: #212121;
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+}
+
+.notes-form-accordion .titled-pane .content {
+    -fx-background-color: #FFFFFF;
+    -fx-padding: 10px;
+}
+
+.form-label {
+    -fx-font-size: 14px;
+    -fx-text-fill: #212121;
+}
+
+.form-textfield, .form-combo {
+    -fx-background-color: #F5F5F5;
+    -fx-border-color: #9E9E9E;
+    -fx-border-width: 1px;
+    -fx-border-radius: 5px;
+    -fx-background-radius: 5px;
+    -fx-padding: 5px;
+}
+
+.form-textfield:focused, .form-combo:focused {
+    -fx-border-color: #2196F3;
+    -fx-border-width: 2px;
+}
+
+.calculated-value {
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #2196F3;
+}
+
+.form-buttons-container {
+    -fx-padding: 10px 0 0 0;
+}
+
+/* TableView des notes */
+.notes-table {
+    -fx-background-color: #F5F5F5;
+    -fx-border-color: #9E9E9E;
+    -fx-border-width: 1px;
+    -fx-border-radius: 5px;
+    -fx-background-radius: 5px;
+}
+
+.notes-table .column-header-background {
+    -fx-background-color: #2196F3;
+    -fx-background-radius: 5px 5px 0 0;
+}
+
+.notes-table .column-header .label {
+    -fx-text-fill: #FFFFFF;
+    -fx-font-weight: bold;
+}
+
+.notes-table .table-row-cell {
+    -fx-background-color: #FFFFFF;
+    -fx-border-color: #9E9E9E;
+    -fx-border-width: 0 0 0.5px 0;
+}
+
+.notes-table .table-row-cell:selected {
+    -fx-background-color: derive(#2196F3, 50%);
+    -fx-text-fill: #FFFFFF;
+}
+
+/* Pied de page */
+.footer-container {
+    -fx-background-color: #2196F3;
+    -fx-padding: 10px 20px;
+    -fx-alignment: center;
+}
+
+.footer-label {
+    -fx-font-size: 14px;
+    -fx-text-fill: #FFFFFF;
+}
+
+.footer-value {
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #FFFFFF;
+}
+
+.footer-separator {
+    -fx-background-color: derive(#2196F3, 20%);
+    -fx-pref-height: 20px;
+}
+
+.status-message {
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-padding: 5px 10px;
+    -fx-background-radius: 5px;
+    -fx-text-fill: white;
+    -fx-alignment: center;
+}
+
+.status-success {
+    -fx-background-color: #4CAF50; /* Green */
+}
+
+.status-error {
+    -fx-background-color: #F44336; /* Red */
+}
+
+.status-warning {
+    -fx-background-color: #FFC107; /* Amber */
+    -fx-text-fill: #212121; /* Dark text for warning */
+}
