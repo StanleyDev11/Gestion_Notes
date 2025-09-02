@@ -4,6 +4,7 @@
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.ComboBox?>
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ProgressIndicator?>
 <?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.control.Separator?>
 <?import javafx.scene.control.TableColumn?>
@@ -57,7 +58,10 @@
                 <Label fx:id="clockLabel" styleClass="clock-label" />
             </HBox>
             <Separator styleClass="header-separator" />
-            <Label fx:id="statusMessageLabel" styleClass="status-message" />
+            <HBox alignment="CENTER_LEFT" spacing="10">
+                <Label fx:id="statusMessageLabel" styleClass="status-message" />
+                <ProgressIndicator fx:id="mainLoadingSpinner" visible="false" prefHeight="20" prefWidth="20" />
+            </HBox>
         </VBox>
     </top>
 
@@ -88,13 +92,11 @@
                     </Button>
                 </HBox>
 
-                <ScrollPane fitToWidth="true" styleClass="student-scroll-pane">
-                    <FlowPane fx:id="studentCardsContainer" hgap="8" vgap="8" styleClass="student-cards-container">
-                        <padding>
-                            <Insets bottom="10.0" left="5.0" right="5.0" top="5.0" />
-                        </padding>
-                    </FlowPane>
-                </ScrollPane>
+                <FlowPane fx:id="studentCardsContainer" hgap="8" vgap="8" styleClass="student-cards-container" VBox.vgrow="ALWAYS">
+                    <padding>
+                        <Insets bottom="10.0" left="5.0" right="5.0" top="5.0" />
+                    </padding>
+                </FlowPane>
             </VBox>
 
             <!-- Right side with tabs -->
@@ -192,9 +194,16 @@
                         </graphic>
                         <content>
                             <VBox spacing="8" VBox.vgrow="ALWAYS">
-                                <HBox alignment="CENTER_LEFT">
+                                <HBox alignment="CENTER_LEFT" spacing="10">
                                     <Label styleClass="panel-title" text="Notes de l'étudiant" />
                                     <Label fx:id="notesCountLabel" styleClass="counter-label" text="(0 notes)" />
+                                    <Region HBox.hgrow="ALWAYS" />
+                                    <Button fx:id="exportNotesButton" mnemonicParsing="false" onAction="#handleExportNotes">
+                                        <tooltip><Tooltip text="Exporter les notes" /></tooltip>
+                                        <graphic>
+                                            <FontAwesomeIconView glyphName="DOWNLOAD" size="16" />
+                                        </graphic>
+                                    </Button>
                                 </HBox>
 
                                 <TableView fx:id="tableViewNotes" styleClass="notes-table" VBox.vgrow="ALWAYS">

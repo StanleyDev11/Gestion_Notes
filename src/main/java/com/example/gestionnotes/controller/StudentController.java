@@ -12,6 +12,7 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.control.ProgressIndicator;
 import javafx.stage.Stage;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
@@ -20,6 +21,14 @@ import java.util.Optional;
 import javafx.scene.control.ButtonType;
 import de.jensd.fx.glyphs.fontawesome.FontAwesomeIcon;
 import de.jensd.fx.glyphs.fontawesome.FontAwesomeIconView;
+import java.io.File;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import javafx.stage.FileChooser;
+import javafx.stage.Stage;
+import java.io.IOException;
 
 /**
  * Contrôleur pour la fenêtre de gestion des étudiants (ajout, affichage, modification, suppression).
@@ -40,9 +49,15 @@ public class StudentController {
     private Button deleteStudentButton;
     @FXML
     private Button clearFieldsButton;
+    @FXML
+    private Button importCsvButton;
+    @FXML
+    private Button exportCsvButton;
 
     @FXML
     private Label statusMessageLabel;
+    @FXML
+    private ProgressIndicator loadingSpinner;
     
     @FXML
     private TableView<Etudiant> studentTableView;
@@ -92,18 +107,22 @@ public class StudentController {
         updateStudentButton.setGraphic(new FontAwesomeIconView(FontAwesomeIcon.PENCIL));
         deleteStudentButton.setGraphic(new FontAwesomeIconView(FontAwesomeIcon.TRASH));
         clearFieldsButton.setGraphic(new FontAwesomeIconView(FontAwesomeIcon.TIMES));
+        importCsvButton.setGraphic(new FontAwesomeIconView(FontAwesomeIcon.UPLOAD));
+        exportCsvButton.setGraphic(new FontAwesomeIconView(FontAwesomeIcon.DOWNLOAD));
     }
 
     /**
      * Charge la liste des étudiants depuis la base de données et remplit le TableView.
      */
     private void loadStudents() {
+        showSpinner();
         etudiantList = FXCollections.observableArrayList(etudiantDAO.getAllEtudiants());
         studentTableView.setItems(etudiantList);
         // Réinitialiser les boutons après le chargement
         addStudentButton.setDisable(false);
         updateStudentButton.setDisable(true);
         deleteStudentButton.setDisable(true);
+        hideSpinner();
     }
 
     /**
@@ -132,12 +151,33 @@ public class StudentController {
      */
     @FXML
     private void handleAddStudent() {
+        showSpinner();
+        // Clear previous invalid states
+        setFieldInvalid(nomTextField, false);
+        setFieldInvalid(prenomTextField, false);
+        setFieldInvalid(filiereTextField, false);
+
         String nom = nomTextField.getText();
         String prenom = prenomTextField.getText();
         String filiere = filiereTextField.getText();
 
-        if (nom == null || nom.trim().isEmpty() || prenom == null || prenom.trim().isEmpty() || filiere == null || filiere.trim().isEmpty()) {
+        boolean isValid = true;
+        if (nom == null || nom.trim().isEmpty()) {
+            setFieldInvalid(nomTextField, true);
+            isValid = false;
+        }
+        if (prenom == null || prenom.trim().isEmpty()) {
+            setFieldInvalid(prenomTextField, true);
+            isValid = false;
+        }
+        if (filiere == null || filiere.trim().isEmpty()) {
+            setFieldInvalid(filiereTextField, true);
+            isValid = false;
+        }
+
+        if (!isValid) {
             showStatusMessage("Le nom, le prénom et la filière ne peuvent pas être vides.", "status-error", 3);
+            hideSpinner(); // Hide spinner on validation error
             return;
         }
 
@@ -153,6 +193,7 @@ public class StudentController {
         } else {
             showStatusMessage("Échec de l'ajout de l'étudiant.", "status-error", 3);
         }
+        hideSpinner();
     }
 
     /**
@@ -161,14 +202,35 @@ public class StudentController {
      */
     @FXML
     private void handleUpdateStudent() {
+        showSpinner();
+        // Clear previous invalid states
+        setFieldInvalid(nomTextField, false);
+        setFieldInvalid(prenomTextField, false);
+        setFieldInvalid(filiereTextField, false);
+
         Etudiant selectedEtudiant = studentTableView.getSelectionModel().getSelectedItem();
         if (selectedEtudiant != null) {
             String nom = nomTextField.getText();
             String prenom = prenomTextField.getText();
             String filiere = filiereTextField.getText();
 
-            if (nom == null || nom.trim().isEmpty() || prenom == null || prenom.trim().isEmpty() || filiere == null || filiere.trim().isEmpty()) {
+            boolean isValid = true;
+            if (nom == null || nom.trim().isEmpty()) {
+                setFieldInvalid(nomTextField, true);
+                isValid = false;
+            }
+            if (prenom == null || prenom.trim().isEmpty()) {
+                setFieldInvalid(prenomTextField, true);
+                isValid = false;
+            }
+            if (filiere == null || filiere.trim().isEmpty()) {
+                setFieldInvalid(filiereTextField, true);
+                isValid = false;
+            }
+
+            if (!isValid) {
                 showStatusMessage("Le nom, le prénom et la filière ne peuvent pas être vides.", "status-error", 3);
+                hideSpinner(); // Hide spinner on validation error
                 return;
             }
 
@@ -189,6 +251,7 @@ public class StudentController {
         } else {
             showStatusMessage("Veuillez sélectionner un étudiant à modifier dans le tableau.", "status-warning", 3);
         }
+        hideSpinner();
     }
 
     /**
@@ -197,6 +260,7 @@ public class StudentController {
      */
     @FXML
     private void handleDeleteStudent() {
+        showSpinner();
         Etudiant selectedEtudiant = studentTableView.getSelectionModel().getSelectedItem();
         if (selectedEtudiant != null) {
             Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
@@ -220,6 +284,7 @@ public class StudentController {
         } else {
             showStatusMessage("Veuillez sélectionner un étudiant à supprimer dans le tableau.", "status-warning", 3);
         }
+        hideSpinner();
     }
 
     /**
@@ -242,6 +307,160 @@ public class StudentController {
         addStudentButton.setDisable(false);
         updateStudentButton.setDisable(true);
         deleteStudentButton.setDisable(true);
+        // Clear invalid states
+        setFieldInvalid(nomTextField, false);
+        setFieldInvalid(prenomTextField, false);
+        setFieldInvalid(filiereTextField, false);
+    }
+
+    private void showSpinner() {
+        if (loadingSpinner != null) {
+            loadingSpinner.setVisible(true);
+            // Disable UI elements
+            nomTextField.setDisable(true);
+            prenomTextField.setDisable(true);
+            filiereTextField.setDisable(true);
+            addStudentButton.setDisable(true);
+            updateStudentButton.setDisable(true);
+            deleteStudentButton.setDisable(true);
+            clearFieldsButton.setDisable(true);
+            importCsvButton.setDisable(true);
+            studentTableView.setDisable(true);
+        }
+    }
+
+    private void hideSpinner() {
+        if (loadingSpinner != null) {
+            loadingSpinner.setVisible(false);
+            // Re-enable UI elements
+            nomTextField.setDisable(false);
+            prenomTextField.setDisable(false);
+            filiereTextField.setDisable(false);
+            // Buttons will be re-enabled by clearFields() or showStudentDetails()
+            // based on selection, so we only re-enable the ones that are always active
+            clearFieldsButton.setDisable(false);
+            importCsvButton.setDisable(false);
+            studentTableView.setDisable(false);
+
+            // Re-enable add/update/delete based on current state
+            Etudiant selectedEtudiant = studentTableView.getSelectionModel().getSelectedItem();
+            if (selectedEtudiant != null) {
+                addStudentButton.setDisable(true);
+                updateStudentButton.setDisable(false);
+                deleteStudentButton.setDisable(false);
+            }
+            else {
+                addStudentButton.setDisable(false);
+                updateStudentButton.setDisable(true);
+                deleteStudentButton.setDisable(true);
+            }
+        }
+    }
+
+    private void setFieldInvalid(TextField field, boolean invalid) {
+        if (invalid) {
+            field.getStyleClass().add("invalid-field");
+        }
+        else {
+            field.getStyleClass().remove("invalid-field");
+        }
+    }
+
+    /**
+     * Gère l'action du bouton "Importer CSV".
+     * Permet d'importer des étudiants depuis un fichier CSV.
+     */
+    @FXML
+    private void handleImportCsv() {
+        showSpinner();
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Sélectionner un fichier CSV");
+        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Fichiers CSV", "*.csv"));
+        File selectedFile = fileChooser.showOpenDialog(new Stage()); // Use a new Stage for the dialog
+
+        if (selectedFile != null) {
+            int importedCount = 0;
+            int failedCount = 0;
+            try (BufferedReader reader = new BufferedReader(new FileReader(selectedFile))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    String[] parts = line.split(",");
+                    if (parts.length == 3) { // Expecting nom,prenom,filiere
+                        String nom = parts[0].trim();
+                        String prenom = parts[1].trim();
+                        String filiere = parts[2].trim();
+
+                        // Basic validation
+                        if (nom.isEmpty() || prenom.isEmpty() || filiere.isEmpty()) {
+                            failedCount++;
+                            continue;
+                        }
+
+                        Etudiant newEtudiant = new Etudiant(0, nom, prenom, filiere);
+                        if (etudiantDAO.addEtudiant(newEtudiant)) {
+                            importedCount++;
+                        }
+                        else {
+                            failedCount++;
+                        }
+                    }
+                    else {
+                        failedCount++; // Malformed line
+                    }
+                }
+                showStatusMessage("Importation terminée. " + importedCount + " étudiants importés, " + failedCount + " échecs.", "status-info", 5);
+                loadStudents(); // Refresh the TableView
+                if (mainController != null) {
+                    mainController.refreshStudentView();
+                }
+            }
+            catch (IOException e) {
+                showStatusMessage("Erreur de lecture du fichier : " + e.getMessage(), "status-error", 5);
+                e.printStackTrace();
+            }
+            catch (Exception e) { // Catch any other unexpected errors during parsing/DB ops
+                showStatusMessage("Une erreur inattendue est survenue lors de l'importation : " + e.getMessage(), "status-error", 5);
+                e.printStackTrace();
+            }
+        }
+        else {
+            showStatusMessage("Aucun fichier sélectionné.", "status-warning", 3);
+        }
+        hideSpinner();
+    }
+
+    @FXML
+    private void handleExportCsv() {
+        showSpinner();
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Enregistrer le fichier CSV");
+        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Fichiers CSV", "*.csv"));
+        fileChooser.setInitialFileName("etudiants.csv");
+        File file = fileChooser.showSaveDialog(new Stage());
+
+        if (file != null) {
+            try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
+                // Write CSV header
+                writer.write("Nom,Prenom,Filiere");
+                writer.newLine();
+
+                // Write student data
+                for (Etudiant etudiant : etudiantList) {
+                    writer.write(String.join(",",
+                            etudiant.getNom(),
+                            etudiant.getPrenom(),
+                            etudiant.getFiliere()));
+                    writer.newLine();
+                }
+                showStatusMessage("Exportation terminée avec succès !", "status-success", 3);
+            } catch (IOException e) {
+                showStatusMessage("Erreur lors de l'exportation du fichier : " + e.getMessage(), "status-error", 5);
+                e.printStackTrace();
+            }
+        } else {
+            showStatusMessage("Exportation annulée : aucun fichier sélectionné.", "status-warning", 3);
+        }
+        hideSpinner();
     }
 
     

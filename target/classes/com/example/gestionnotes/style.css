@@ -370,3 +370,8 @@
     -fx-background-color: #FFC107; /* Amber */
     -fx-text-fill: #212121; /* Dark text for warning */
 }
+
+.invalid-field {
+    -fx-border-color: #F44336; /* Red */
+    -fx-border-width: 2px;
+}
