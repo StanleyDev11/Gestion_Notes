@@ -6,6 +6,7 @@ import com.example.gestionnotes.model.Etudiant;
 import com.example.gestionnotes.model.Note;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
@@ -27,12 +28,14 @@ import de.jensd.fx.glyphs.fontawesome.FontAwesomeIconView;
 import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import java.text.DecimalFormat; // Pour formater la moyenne
 import java.io.File;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import javafx.stage.FileChooser;
-import javafx.stage.Stage;
+import javafx.util.Pair;
 
 /**
  * Contrôleur principal de l'application de gestion des notes.
@@ -151,13 +154,13 @@ public class MainController {
 
         // Configurer l'écouteur pour le ComboBox des filières
         filiereFilterComboBox.getSelectionModel().selectedItemProperty().addListener(
-                (observable, oldValue, newValue) -> filterAndDisplayStudents());
+                (observable, oldValue, newValue) -> loadStudentsTask());
 
         
 
         // Configurer l'écouteur pour le champ de recherche
         searchField.textProperty().addListener(
-                (observable, oldValue, newValue) -> filterAndDisplayStudents());
+                (observable, oldValue, newValue) -> loadStudentsTask());
 
         // Écouteur de sélection sur le TableView des notes pour la modification/suppression
         tableViewNotes.getSelectionModel().selectedItemProperty().addListener(
@@ -168,13 +171,13 @@ public class MainController {
         noteExamenTextField.textProperty().addListener((obs, oldVal, newVal) -> handleCalculateButtonAction());
 
         // Afficher tous les étudiants au démarrage
-        filterAndDisplayStudents();
+        loadStudentsTask();
 
         // Désactiver les boutons de gestion des notes au démarrage
         setNoteButtonsDisabled(true);
 
         // Calculer et afficher les statistiques du footer
-        updateFooterStatistics();
+        updateFooterStatisticsTask();
 
         // Initialiser le contrôleur de la vue étudiant
         studentViewController.setMainController(this);
@@ -184,9 +187,6 @@ public class MainController {
 
         // Setup icons
         setupIcons();
-
-        // Initial hide spinner
-        hideSpinner();
     }
 
     /**
@@ -205,47 +205,63 @@ public class MainController {
     /**
      * Filtre et affiche les étudiants en fonction de la filière et du texte de recherche.
      */
-    private void filterAndDisplayStudents() {
-        showSpinner(); // Show spinner
-        studentCardsContainer.getChildren().clear(); // Nettoie les cartes existantes
-        String selectedFiliere = filiereFilterComboBox.getSelectionModel().getSelectedItem();
-        String searchText = searchField.getText().toLowerCase();
+    private void loadStudentsTask() {
+        Task<List<Etudiant>> task = new Task<>() {
+            @Override
+            protected List<Etudiant> call() throws Exception {
+                String selectedFiliere = filiereFilterComboBox.getSelectionModel().getSelectedItem();
+                String searchText = searchField.getText().toLowerCase();
 
-        List<Etudiant> allStudents = etudiantDAO.getAllEtudiants();
-        List<Etudiant> filteredStudents = new java.util.ArrayList<>();
-
-        // If a specific filiere is selected, or if a search is being performed
-        if ((selectedFiliere != null && !selectedFiliere.equals("Toutes les filières")) || !searchText.isEmpty()) {
-            for (Etudiant etudiant : allStudents) {
-                boolean matchesFiliere = (selectedFiliere == null || selectedFiliere.equals("Toutes les filières") || etudiant.getFiliere().equals(selectedFiliere));
-                boolean matchesSearch = (searchText.isEmpty() ||
-                                         etudiant.getNom().toLowerCase().contains(searchText) ||
-                                         etudiant.getPrenom().toLowerCase().contains(searchText) ||
-                                         etudiant.getFiliere().toLowerCase().contains(searchText));
-
-                if (matchesFiliere && matchesSearch) {
-                    filteredStudents.add(etudiant);
-                }
+                List<Etudiant> allStudents = etudiantDAO.getAllEtudiants();
+                return allStudents.stream()
+                        .filter(etudiant -> {
+                            boolean matchesFiliere = (selectedFiliere == null || selectedFiliere.equals("Toutes les filières") || etudiant.getFiliere().equals(selectedFiliere));
+                            boolean matchesSearch = (searchText.isEmpty() ||
+                                                     etudiant.getNom().toLowerCase().contains(searchText) ||
+                                                     etudiant.getPrenom().toLowerCase().contains(searchText) ||
+                                                     etudiant.getFiliere().toLowerCase().contains(searchText));
+                            return matchesFiliere && matchesSearch;
+                        })
+                        .collect(Collectors.toList());
             }
-        }
+        };
 
-        studentCountLabel.setText("(" + filteredStudents.size() + ")");
+        task.setOnSucceeded(event -> {
+            List<Etudiant> students = task.getValue();
+            updateStudentCards(students);
+        });
 
-        if (filteredStudents.isEmpty()) {
+        task.setOnFailed(event -> {
+            task.getException().printStackTrace();
+            showStatusMessage("Erreur lors du chargement des étudiants.", "status-error", 5);
+        });
+
+        mainLoadingSpinner.visibleProperty().bind(task.runningProperty());
+        filiereFilterComboBox.disableProperty().bind(task.runningProperty());
+        searchField.disableProperty().bind(task.runningProperty());
+        studentCardsContainer.disableProperty().bind(task.runningProperty());
+
+        new Thread(task).start();
+    }
+
+    private void updateStudentCards(List<Etudiant> students) {
+        studentCardsContainer.getChildren().clear();
+        studentCountLabel.setText("(" + students.size() + ")");
+
+        if (students.isEmpty()) {
+            String selectedFiliere = filiereFilterComboBox.getSelectionModel().getSelectedItem();
+            String searchText = searchField.getText();
             if (searchText.isEmpty() && (selectedFiliere == null || selectedFiliere.equals("Toutes les filières"))) {
                 studentCardsContainer.getChildren().add(new Label("Veuillez sélectionner une filière ou lancer une recherche."));
-            }
-            else {
+            } else {
                 studentCardsContainer.getChildren().add(new Label("Aucun étudiant trouvé avec ces critères."));
             }
-        }
-        else {
-            for (Etudiant etudiant : filteredStudents) {
+        } else {
+            for (Etudiant etudiant : students) {
                 VBox studentCard = createStudentCard(etudiant);
                 studentCardsContainer.getChildren().add(studentCard);
             }
         }
-        hideSpinner(); // Hide spinner
     }
 
     /**
@@ -254,7 +270,6 @@ public class MainController {
      * @return Une VBox représentant la carte de l'étudiant.
      */
     private VBox createStudentCard(Etudiant etudiant) {
-        System.out.println("Creating student card for: " + etudiant.getNom() + " " + etudiant.getPrenom());
         VBox card = new VBox(5);
         card.getStyleClass().add("student-card");
         card.setPrefSize(150, 80); // Taille fixe pour les cartes
@@ -271,7 +286,6 @@ public class MainController {
 
         // Gérer la sélection de la carte
         card.setOnMouseClicked(event -> {
-            System.out.println("Student card clicked: " + etudiant.getNom() + " " + etudiant.getPrenom());
             // Désélectionner toutes les autres cartes
             for (javafx.scene.Node node : studentCardsContainer.getChildren()) {
                 node.getStyleClass().remove("student-card-selected");
@@ -289,45 +303,54 @@ public class MainController {
      * @param etudiant L'étudiant sélectionné.
      */
     private void selectStudentForNotes(Etudiant etudiant) {
-        showSpinner(); // Show spinner
-        System.out.println("Selecting student for notes: " + etudiant.getNom() + " " + etudiant.getPrenom());
         this.selectedEtudiantForNotes = etudiant;
         selectedStudentLabel.setText("Saisie des notes pour :");
         studentInfoLabel.setText(etudiant.getPrenom() + " " + etudiant.getNom() + " (" + etudiant.getFiliere() + ")");
         
-        // Calculer et afficher la moyenne générale de l'étudiant
-        double overallAverage = noteDAO.getAllNotes().stream()
-                .filter(note -> note.getEtudiantId() == etudiant.getId())
-                .mapToDouble(Note::getMoyenne)
-                .average()
-                .orElse(0.0);
-        studentAverageLabel.setText("Moyenne générale: " + df.format(overallAverage));
-        studentAverageLabel.getStyleClass().clear();
-        studentAverageLabel.getStyleClass().add(overallAverage >= 10 ? "status-valide" : "status-non-valide");
-
-
-        loadNotesForSelectedStudent();
+        loadNotesForStudentTask(etudiant);
         setNoteButtonsDisabled(false); // Activer les boutons de gestion des notes
         clearNoteFields();
-        hideSpinner(); // Hide spinner
     }
 
     /**
      * Charge les notes de l'étudiant actuellement sélectionné dans le TableView.
      */
-    private void loadNotesForSelectedStudent() {
-        showSpinner(); // Show spinner
-        if (selectedEtudiantForNotes != null) {
-            noteList = FXCollections.observableArrayList(noteDAO.getAllNotes().stream()
-                    .filter(note -> note.getEtudiantId() == selectedEtudiantForNotes.getId())
-                    .collect(java.util.stream.Collectors.toList()));
+    private void loadNotesForStudentTask(Etudiant etudiant) {
+        Task<Pair<List<Note>, Double>> task = new Task<>() {
+            @Override
+            protected Pair<List<Note>, Double> call() throws Exception {
+                List<Note> notes = noteDAO.getAllNotes().stream()
+                        .filter(note -> note.getEtudiantId() == etudiant.getId())
+                        .collect(Collectors.toList());
+                double average = notes.stream()
+                        .mapToDouble(Note::getMoyenne)
+                        .average()
+                        .orElse(0.0);
+                return new Pair<>(notes, average);
+            }
+        };
+
+        task.setOnSucceeded(event -> {
+            Pair<List<Note>, Double> result = task.getValue();
+            noteList = FXCollections.observableArrayList(result.getKey());
             tableViewNotes.setItems(noteList);
             notesCountLabel.setText("(" + noteList.size() + " notes)");
-        } else {
-            tableViewNotes.setItems(FXCollections.emptyObservableList());
-            notesCountLabel.setText("(0 notes)");
-        }
-        hideSpinner(); // Hide spinner
+
+            double overallAverage = result.getValue();
+            studentAverageLabel.setText("Moyenne générale: " + df.format(overallAverage));
+            studentAverageLabel.getStyleClass().clear();
+            studentAverageLabel.getStyleClass().add(overallAverage >= 10 ? "status-valide" : "status-non-valide");
+        });
+
+        task.setOnFailed(event -> {
+            task.getException().printStackTrace();
+            showStatusMessage("Erreur lors du chargement des notes de l'étudiant.", "status-error", 5);
+        });
+
+        mainLoadingSpinner.visibleProperty().bind(task.runningProperty());
+        tableViewNotes.disableProperty().bind(task.runningProperty());
+
+        new Thread(task).start();
     }
 
     /**
@@ -405,37 +428,53 @@ public class MainController {
         }
     }
 
+    private void runNoteCUDTask(Supplier<Boolean> action, String successMessage, String failureMessage) {
+        Task<Boolean> task = new Task<>() {
+            @Override
+            protected Boolean call() throws Exception {
+                return action.get();
+            }
+        };
+
+        task.setOnSucceeded(event -> {
+            if (task.getValue()) {
+                showStatusMessage(successMessage, "status-success", 3);
+                loadNotesForStudentTask(selectedEtudiantForNotes);
+                clearNoteFields();
+                updateFooterStatisticsTask();
+            } else {
+                showStatusMessage(failureMessage, "status-error", 3);
+            }
+        });
+
+        task.setOnFailed(event -> {
+            task.getException().printStackTrace();
+            showStatusMessage("Erreur lors de l'opération sur la note.", "status-error", 5);
+        });
+
+        mainLoadingSpinner.visibleProperty().bind(task.runningProperty());
+        tabPane.disableProperty().bind(task.runningProperty());
+
+        new Thread(task).start();
+    }
+
     /**
      * Gère l'action du bouton "Ajouter Note".
      * Ajoute une nouvelle note à la base de données après validation.
      */
     @FXML
     private void handleAddButtonAction() {
-        showSpinner(); // Show spinner
         if (selectedEtudiantForNotes == null) {
             showStatusMessage("Veuillez sélectionner un étudiant avant d'ajouter une note.", "status-error", 3);
-            hideSpinner(); // Hide spinner on error
             return;
         }
         if (isNoteInputValid()) {
-            String matiere = matiereTextField.getText();
-            double noteDevoir = Double.parseDouble(noteDevoirTextField.getText());
-            double noteExamen = Double.parseDouble(noteExamenTextField.getText());
-
             Note newNote = new Note(0, selectedEtudiantForNotes.getId(),
                     selectedEtudiantForNotes.getNom(), selectedEtudiantForNotes.getPrenom(),
-                    matiere, noteDevoir, noteExamen);
+                    matiereTextField.getText(), Double.parseDouble(noteDevoirTextField.getText()), Double.parseDouble(noteExamenTextField.getText()));
 
-            if (noteDAO.addNote(newNote)) {
-                showStatusMessage("Note ajoutée avec succès !", "status-success", 3);
-                loadNotesForSelectedStudent(); // Rafraîchir le TableView
-                clearNoteFields();
-                updateFooterStatistics(); // Mettre à jour les stats du footer
-            } else {
-                showStatusMessage("Échec de l'ajout de la note.", "status-error", 3);
-            }
+            runNoteCUDTask(() -> noteDAO.addNote(newNote), "Note ajoutée avec succès !", "Échec de l'ajout de la note.");
         }
-        hideSpinner(); // Hide spinner
     }
 
     /**
@@ -444,7 +483,6 @@ public class MainController {
      */
     @FXML
     private void handleUpdateButtonAction() {
-        showSpinner(); // Show spinner
         Note selectedNote = tableViewNotes.getSelectionModel().getSelectedItem();
         if (selectedNote != null) {
             if (isNoteInputValid()) {
@@ -452,19 +490,11 @@ public class MainController {
                 selectedNote.setNoteDevoir(Double.parseDouble(noteDevoirTextField.getText()));
                 selectedNote.setNoteExamen(Double.parseDouble(noteExamenTextField.getText()));
 
-                if (noteDAO.updateNote(selectedNote)) {
-                    showStatusMessage("Note modifiée avec succès !", "status-success", 3);
-                    loadNotesForSelectedStudent(); // Rafraîchir le TableView
-                    clearNoteFields();
-                    updateFooterStatistics(); // Mettre à jour les stats du footer
-                } else {
-                    showStatusMessage("Échec de la modification de la note.", "status-error", 3);
-                }
+                runNoteCUDTask(() -> noteDAO.updateNote(selectedNote), "Note modifiée avec succès !", "Échec de la modification de la note.");
             }
         } else {
             showStatusMessage("Veuillez sélectionner une note à modifier dans le tableau.", "status-warning", 3);
         }
-        hideSpinner(); // Hide spinner
     }
 
     /**
@@ -473,7 +503,6 @@ public class MainController {
      */
     @FXML
     private void handleDeleteButtonAction() {
-        showSpinner(); // Show spinner
         Note selectedNote = tableViewNotes.getSelectionModel().getSelectedItem();
         if (selectedNote != null) {
             Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
@@ -483,20 +512,12 @@ public class MainController {
 
             Optional<ButtonType> result = alert.showAndWait();
             if (result.isPresent() && result.get() == ButtonType.OK) {
-                if (noteDAO.deleteNote(selectedNote.getId())) {
-                    showStatusMessage("Note supprimée avec succès !", "status-success", 3);
-                    loadNotesForSelectedStudent(); // Rafraîchir le TableView
-                    clearNoteFields();
-                    updateFooterStatistics(); // Mettre à jour les stats du footer
-                } else {
-                    showStatusMessage("Échec de la suppression de la note.", "status-error", 3);
-                }
+                runNoteCUDTask(() -> noteDAO.deleteNote(selectedNote.getId()), "Note supprimée avec succès !", "Échec de la suppression de la note.");
             }
         }
         else {
             showStatusMessage("Veuillez sélectionner une note à supprimer dans le tableau.", "status-warning", 3);
         }
-        hideSpinner(); // Hide spinner
     }
 
     /**
@@ -528,7 +549,7 @@ public class MainController {
                 double noteValue = Double.parseDouble(noteDevoirTextField.getText());
                 if (noteValue < 0 || noteValue > 20) {
                     errorMessage += "La note de devoir doit être comprise entre 0 et 20 !\n";
-                }
+                } 
             } catch (NumberFormatException e) {
                 errorMessage += "La note de devoir doit être un nombre valide !\n";
             }
@@ -583,7 +604,7 @@ public class MainController {
 
     public void refreshStudentView() {
         loadFilieres();
-        filterAndDisplayStudents();
+        loadStudentsTask();
     }
 
     private void initClock() {
@@ -606,103 +627,126 @@ public class MainController {
     /**
      * Met à jour les statistiques affichées dans le pied de page.
      */
-    private void updateFooterStatistics() {
-        showSpinner(); // Show spinner
-        List<Etudiant> allEtudiants = etudiantDAO.getAllEtudiants();
-        List<Note> allNotes = noteDAO.getAllNotes();
+    private void updateFooterStatisticsTask() {
+        Task<Object[]> task = new Task<>() {
+            @Override
+            protected Object[] call() throws Exception {
+                List<Etudiant> allEtudiants = etudiantDAO.getAllEtudiants();
+                List<Note> allNotes = noteDAO.getAllNotes();
 
-        totalStudentsLabel.setText(String.valueOf(allEtudiants.size()));
-
-        double totalMoyenne = 0.0;
-        int validatedCount = 0;
-        if (!allNotes.isEmpty()) {
-            for (Note note : allNotes) {
-                totalMoyenne += note.getMoyenne();
-                if (note.getMoyenne() >= 10) {
-                    validatedCount++;
+                double totalMoyenne = 0.0;
+                int validatedCount = 0;
+                if (!allNotes.isEmpty()) {
+                    for (Note note : allNotes) {
+                        totalMoyenne += note.getMoyenne();
+                        if (note.getMoyenne() >= 10) {
+                            validatedCount++;
+                        }
+                    }
                 }
+                return new Object[]{allEtudiants.size(), totalMoyenne, validatedCount, allNotes.size()};
             }
-            globalAverageLabel.setText(df.format(totalMoyenne / allNotes.size()));
-            successRateLabel.setText(df.format((double) validatedCount / allNotes.size() * 100) + "%");
-        } else {
-            globalAverageLabel.setText("0.00");
-            successRateLabel.setText("0%");
-        }
-        hideSpinner(); // Hide spinner
+        };
+
+        task.setOnSucceeded(event -> {
+            Object[] results = task.getValue();
+            totalStudentsLabel.setText(String.valueOf(results[0]));
+            double totalMoyenne = (double) results[1];
+            int validatedCount = (int) results[2];
+            int allNotesSize = (int) results[3];
+
+            if (allNotesSize > 0) {
+                globalAverageLabel.setText(df.format(totalMoyenne / allNotesSize));
+                successRateLabel.setText(df.format((double) validatedCount / allNotesSize * 100) + "%");
+            } else {
+                globalAverageLabel.setText("0.00");
+                successRateLabel.setText("0%");
+            }
+        });
+
+        task.setOnFailed(event -> {
+            task.getException().printStackTrace();
+            showStatusMessage("Erreur lors de la mise à jour des statistiques.", "status-error", 5);
+        });
+
+        new Thread(task).start();
     }
 
     @FXML
     private void handleExportNotes() {
-        showSpinner(); // Show spinner at the beginning
-        showStatusMessage("Préparation de l'exportation...", "status-info", 3);
-        // Get selected filiere
         String selectedFiliere = filiereFilterComboBox.getSelectionModel().getSelectedItem();
-
-        // Get notes based on filiere
-        List<Note> notesToExport;
-        if (selectedFiliere == null || selectedFiliere.equals("Toutes les filières")) {
-            notesToExport = noteDAO.getAllNotes();
-        }
-        else {
-            // Filter notes by filiere
-            List<Etudiant> studentsInFiliere = etudiantDAO.getAllEtudiants().stream()
-                    .filter(e -> e.getFiliere().equals(selectedFiliere))
-                    .collect(java.util.stream.Collectors.toList());
-
-            notesToExport = noteDAO.getAllNotes().stream()
-                    .filter(note -> studentsInFiliere.stream().anyMatch(s -> s.getId() == note.getEtudiantId()))
-                    .collect(java.util.stream.Collectors.toList());
-        }
-
-        if (notesToExport.isEmpty()) {
-            showStatusMessage("Aucune note à exporter pour la filière sélectionnée.", "status-warning", 3);
-            hideSpinner(); // Hide spinner if no notes to export
-            return;
-        }
 
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Enregistrer le fichier CSV des notes");
         fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Fichiers CSV", "*.csv"));
-        fileChooser.setInitialFileName("notes_" + (selectedFiliere.equals("Toutes les filières") ? "toutes_filieres" : selectedFiliere) + ".csv");
+        fileChooser.setInitialFileName("notes_" + (selectedFiliere != null && !selectedFiliere.equals("Toutes les filières") ? selectedFiliere : "toutes_filieres") + ".csv");
         File file = fileChooser.showSaveDialog(new Stage());
 
         if (file != null) {
-            try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
-                // Write CSV header
-                writer.write("Nom Etudiant,Prenom Etudiant,Filiere,Matiere,Note Devoir,Note Examen,Moyenne,Statut");
-                writer.newLine();
-
-                // Write note data
-                for (Note note : notesToExport) {
-                    // Find the student for this note to get their name and filiere
-                    Optional<Etudiant> student = etudiantDAO.getAllEtudiants().stream()
-                            .filter(e -> e.getId() == note.getEtudiantId())
-                            .findFirst();
-
-                    if (student.isPresent()) {
-                        writer.write(String.join(",",
-                                student.get().getNom(),
-                                student.get().getPrenom(),
-                                student.get().getFiliere(),
-                                note.getMatiere(),
-                                String.valueOf(note.getNoteDevoir()),
-                                String.valueOf(note.getNoteExamen()),
-                                df.format(note.getMoyenne()),
-                                note.getStatutValidation()));
-                        writer.newLine();
+            Task<Void> exportTask = new Task<>() {
+                @Override
+                protected Void call() throws Exception {
+                    List<Note> notesToExport;
+                    if (selectedFiliere == null || selectedFiliere.equals("Toutes les filières")) {
+                        notesToExport = noteDAO.getAllNotes();
+                    } else {
+                        List<Etudiant> studentsInFiliere = etudiantDAO.getAllEtudiants().stream()
+                                .filter(e -> e.getFiliere().equals(selectedFiliere))
+                                .collect(Collectors.toList());
+                        notesToExport = noteDAO.getAllNotes().stream()
+                                .filter(note -> studentsInFiliere.stream().anyMatch(s -> s.getId() == note.getEtudiantId()))
+                                .collect(Collectors.toList());
                     }
+
+                    if (notesToExport.isEmpty()) {
+                        // This message will not be visible as it's on a background thread.
+                        // We should handle this in onSucceeded or onFailed.
+                        return null;
+                    }
+
+                    try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
+                        writer.write("Nom Etudiant,Prenom Etudiant,Filiere,Matiere,Note Devoir,Note Examen,Moyenne,Statut");
+                        writer.newLine();
+
+                        for (Note note : notesToExport) {
+                            Optional<Etudiant> student = etudiantDAO.getAllEtudiants().stream()
+                                    .filter(e -> e.getId() == note.getEtudiantId())
+                                    .findFirst();
+
+                            if (student.isPresent()) {
+                                writer.write(String.join(",",
+                                        student.get().getNom(),
+                                        student.get().getPrenom(),
+                                        student.get().getFiliere(),
+                                        note.getMatiere(),
+                                        String.valueOf(note.getNoteDevoir()),
+                                        String.valueOf(note.getNoteExamen()),
+                                        df.format(note.getMoyenne()),
+                                        note.getStatutValidation()));
+                                writer.newLine();
+                            }
+                        }
+                    }
+                    return null;
                 }
+            };
+
+            exportTask.setOnSucceeded(event -> {
                 showStatusMessage("Exportation des notes terminée avec succès !", "status-success", 3);
-            }
-            catch (IOException e) {
-                showStatusMessage("Erreur lors de l'exportation du fichier de notes : " + e.getMessage(), "status-error", 5);
-                e.printStackTrace();
-            }
+            });
+
+            exportTask.setOnFailed(event -> {
+                exportTask.getException().printStackTrace();
+                showStatusMessage("Erreur lors de l'exportation du fichier de notes.", "status-error", 5);
+            });
+
+            mainLoadingSpinner.visibleProperty().bind(exportTask.runningProperty());
+            exportNotesButton.disableProperty().bind(exportTask.runningProperty());
+
+            new Thread(exportTask).start();
+        } else {
+            showStatusMessage("Exportation des notes annulée.", "status-warning", 3);
         }
-        else {
-            showStatusMessage("Exportation des notes annulée : aucun fichier sélectionné.", "status-warning", 3);
-        }
-        hideSpinner(); // Hide spinner at the end
     }
 
     /**
@@ -717,53 +761,6 @@ public class MainController {
         alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
-    }
-
-    private void showSpinner() {
-        if (mainLoadingSpinner != null) {
-            mainLoadingSpinner.setVisible(true);
-            // Disable relevant UI elements in MainController
-            filiereFilterComboBox.setDisable(true);
-            searchField.setDisable(true);
-            // Disable all buttons related to notes management
-            addButton.setDisable(true);
-            updateButton.setDisable(true);
-            deleteButton.setDisable(true);
-            clearButton.setDisable(true);
-            calculateButton.setDisable(true);
-            tableViewNotes.setDisable(true);
-            // Disable student cards container
-            studentCardsContainer.setDisable(true);
-            // Disable tabs
-            tabPane.setDisable(true);
-            // Disable export notes button
-            exportNotesButton.setDisable(true);
-        }
-    }
-
-    private void hideSpinner() {
-        if (mainLoadingSpinner != null) {
-            mainLoadingSpinner.setVisible(false);
-            // Re-enable relevant UI elements
-            filiereFilterComboBox.setDisable(false);
-            searchField.setDisable(false);
-            // Re-enable buttons based on context (e.g., selection)
-            // For now, just re-enable all of them, then specific logic will re-disable if needed
-            clearButton.setDisable(false);
-            calculateButton.setDisable(false);
-            tableViewNotes.setDisable(false);
-            studentCardsContainer.setDisable(false);
-            tabPane.setDisable(false);
-            exportNotesButton.setDisable(false);
-
-            // Re-enable note buttons based on selected student
-            if (selectedEtudiantForNotes != null) {
-                setNoteButtonsDisabled(false);
-            }
-            else {
-                setNoteButtonsDisabled(true);
-            }
-        }
     }
 
     private void showStatusMessage(String message, String styleClass, int durationSeconds) {
