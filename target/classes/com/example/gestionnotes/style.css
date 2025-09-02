@@ -375,3 +375,35 @@
     -fx-border-color: #F44336; /* Red */
     -fx-border-width: 2px;
 }
+
+/* --- Visual Improvements --- */
+
+.student-card:hover {
+    -fx-background-color: derive(#BBDEFB, -10%);
+    -fx-cursor: hand;
+}
+
+.student-card-selected {
+    -fx-background-color: #2196F3;
+    -fx-border-color: derive(#2196F3, -30%);
+    -fx-border-width: 2px;
+}
+
+.student-card-selected .label {
+    -fx-text-fill: white;
+}
+
+.empty-placeholder {
+    -fx-alignment: center;
+    -fx-spacing: 10px;
+    -fx-padding: 20px;
+}
+
+.empty-placeholder .label {
+    -fx-font-size: 16px;
+    -fx-text-fill: #9E9E9E; /* Muted grey color */
+}
+
+.empty-placeholder .glyph-icon {
+    -fx-fill: #9E9E9E;
+}

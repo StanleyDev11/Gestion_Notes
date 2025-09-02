@@ -8,16 +8,16 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
-import javafx.fxml.FXMLLoader;
-import javafx.scene.Scene;
+import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.FlowPane;
-import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 import javafx.animation.Animation;
 import javafx.animation.KeyFrame;
+import javafx.animation.PauseTransition;
 import javafx.animation.Timeline;
 import javafx.util.Duration;
 import java.time.LocalDateTime;
@@ -130,6 +130,8 @@ public class MainController {
     // --- Étudiant actuellement sélectionné ---
     private Etudiant selectedEtudiantForNotes;
 
+    private PauseTransition debounceTimer;
+
     // Format pour la moyenne
     private static final DecimalFormat df = new DecimalFormat("#.##");
 
@@ -141,6 +143,9 @@ public class MainController {
     public void initialize() {
         noteDAO = new NoteDAO();
         etudiantDAO = new EtudiantDAO();
+
+        debounceTimer = new PauseTransition(Duration.millis(400));
+        debounceTimer.setOnFinished(event -> loadStudentsTask());
 
         // Initialisation des colonnes du TableView des notes
         matiereColumn.setCellValueFactory(new PropertyValueFactory<>("matiere"));
@@ -160,7 +165,7 @@ public class MainController {
 
         // Configurer l'écouteur pour le champ de recherche
         searchField.textProperty().addListener(
-                (observable, oldValue, newValue) -> loadStudentsTask());
+                (observable, oldValue, newValue) -> debounceTimer.playFromStart());
 
         // Écouteur de sélection sur le TableView des notes pour la modification/suppression
         tableViewNotes.getSelectionModel().selectedItemProperty().addListener(
@@ -229,19 +234,31 @@ public class MainController {
         task.setOnSucceeded(event -> {
             List<Etudiant> students = task.getValue();
             updateStudentCards(students);
+            unbindStudentListControls();
         });
 
         task.setOnFailed(event -> {
             task.getException().printStackTrace();
             showStatusMessage("Erreur lors du chargement des étudiants.", "status-error", 5);
+            unbindStudentListControls();
         });
 
+        bindStudentListControlsToTask(task);
+        new Thread(task).start();
+    }
+
+    private void bindStudentListControlsToTask(Task<?> task) {
         mainLoadingSpinner.visibleProperty().bind(task.runningProperty());
         filiereFilterComboBox.disableProperty().bind(task.runningProperty());
         searchField.disableProperty().bind(task.runningProperty());
         studentCardsContainer.disableProperty().bind(task.runningProperty());
+    }
 
-        new Thread(task).start();
+    private void unbindStudentListControls() {
+        mainLoadingSpinner.visibleProperty().unbind();
+        filiereFilterComboBox.disableProperty().unbind();
+        searchField.disableProperty().unbind();
+        studentCardsContainer.disableProperty().unbind();
     }
 
     private void updateStudentCards(List<Etudiant> students) {
@@ -249,13 +266,15 @@ public class MainController {
         studentCountLabel.setText("(" + students.size() + ")");
 
         if (students.isEmpty()) {
-            String selectedFiliere = filiereFilterComboBox.getSelectionModel().getSelectedItem();
-            String searchText = searchField.getText();
-            if (searchText.isEmpty() && (selectedFiliere == null || selectedFiliere.equals("Toutes les filières"))) {
-                studentCardsContainer.getChildren().add(new Label("Veuillez sélectionner une filière ou lancer une recherche."));
-            } else {
-                studentCardsContainer.getChildren().add(new Label("Aucun étudiant trouvé avec ces critères."));
-            }
+            FontAwesomeIconView icon = new FontAwesomeIconView(FontAwesomeIcon.QUESTION_CIRCLE);
+            icon.setSize("3em");
+            icon.getStyleClass().add("glyph-icon");
+
+            Label placeholderLabel = new Label("Aucun étudiant trouvé.");
+            VBox placeholder = new VBox(10, icon, placeholderLabel);
+            placeholder.getStyleClass().add("empty-placeholder");
+            placeholder.setAlignment(Pos.CENTER);
+            studentCardsContainer.getChildren().add(placeholder);
         } else {
             for (Etudiant etudiant : students) {
                 VBox studentCard = createStudentCard(etudiant);
@@ -273,7 +292,7 @@ public class MainController {
         VBox card = new VBox(5);
         card.getStyleClass().add("student-card");
         card.setPrefSize(150, 80); // Taille fixe pour les cartes
-        card.setAlignment(javafx.geometry.Pos.CENTER);
+        card.setAlignment(Pos.CENTER);
 
         Label nameLabel = new Label(etudiant.getPrenom() + " " + etudiant.getNom());
         nameLabel.getStyleClass().add("student-card-name");
@@ -287,7 +306,7 @@ public class MainController {
         // Gérer la sélection de la carte
         card.setOnMouseClicked(event -> {
             // Désélectionner toutes les autres cartes
-            for (javafx.scene.Node node : studentCardsContainer.getChildren()) {
+            for (Node node : studentCardsContainer.getChildren()) {
                 node.getStyleClass().remove("student-card-selected");
             }
             // Sélectionner la carte actuelle
@@ -340,11 +359,15 @@ public class MainController {
             studentAverageLabel.setText("Moyenne générale: " + df.format(overallAverage));
             studentAverageLabel.getStyleClass().clear();
             studentAverageLabel.getStyleClass().add(overallAverage >= 10 ? "status-valide" : "status-non-valide");
+            mainLoadingSpinner.visibleProperty().unbind();
+            tableViewNotes.disableProperty().unbind();
         });
 
         task.setOnFailed(event -> {
             task.getException().printStackTrace();
             showStatusMessage("Erreur lors du chargement des notes de l'étudiant.", "status-error", 5);
+            mainLoadingSpinner.visibleProperty().unbind();
+            tableViewNotes.disableProperty().unbind();
         });
 
         mainLoadingSpinner.visibleProperty().bind(task.runningProperty());
@@ -445,11 +468,15 @@ public class MainController {
             } else {
                 showStatusMessage(failureMessage, "status-error", 3);
             }
+            mainLoadingSpinner.visibleProperty().unbind();
+            tabPane.disableProperty().unbind();
         });
 
         task.setOnFailed(event -> {
             task.getException().printStackTrace();
             showStatusMessage("Erreur lors de l'opération sur la note.", "status-error", 5);
+            mainLoadingSpinner.visibleProperty().unbind();
+            tabPane.disableProperty().unbind();
         });
 
         mainLoadingSpinner.visibleProperty().bind(task.runningProperty());
@@ -549,7 +576,7 @@ public class MainController {
                 double noteValue = Double.parseDouble(noteDevoirTextField.getText());
                 if (noteValue < 0 || noteValue > 20) {
                     errorMessage += "La note de devoir doit être comprise entre 0 et 20 !\n";
-                } 
+                }
             } catch (NumberFormatException e) {
                 errorMessage += "La note de devoir doit être un nombre valide !\n";
             }
@@ -617,11 +644,12 @@ public class MainController {
     }
 
     private void setupIcons() {
-        addButton.setGraphic(new FontAwesomeIconView(FontAwesomeIcon.PLUS));
-        updateButton.setGraphic(new FontAwesomeIconView(FontAwesomeIcon.PENCIL));
+        addButton.setGraphic(new FontAwesomeIconView(FontAwesomeIcon.PLUS_CIRCLE));
+        updateButton.setGraphic(new FontAwesomeIconView(FontAwesomeIcon.EDIT));
         deleteButton.setGraphic(new FontAwesomeIconView(FontAwesomeIcon.TRASH));
-        clearButton.setGraphic(new FontAwesomeIconView(FontAwesomeIcon.TIMES));
+        clearButton.setGraphic(new FontAwesomeIconView(FontAwesomeIcon.ERASER));
         calculateButton.setGraphic(new FontAwesomeIconView(FontAwesomeIcon.CALCULATOR));
+        exportNotesButton.setGraphic(new FontAwesomeIconView(FontAwesomeIcon.DOWNLOAD));
     }
 
     /**
@@ -733,20 +761,30 @@ public class MainController {
 
             exportTask.setOnSucceeded(event -> {
                 showStatusMessage("Exportation des notes terminée avec succès !", "status-success", 3);
+                unbindExportControls();
             });
 
             exportTask.setOnFailed(event -> {
                 exportTask.getException().printStackTrace();
                 showStatusMessage("Erreur lors de l'exportation du fichier de notes.", "status-error", 5);
+                unbindExportControls();
             });
 
-            mainLoadingSpinner.visibleProperty().bind(exportTask.runningProperty());
-            exportNotesButton.disableProperty().bind(exportTask.runningProperty());
-
+            bindExportControlsToTask(exportTask);
             new Thread(exportTask).start();
         } else {
             showStatusMessage("Exportation des notes annulée.", "status-warning", 3);
         }
+    }
+
+    private void bindExportControlsToTask(Task<?> task) {
+        mainLoadingSpinner.visibleProperty().bind(task.runningProperty());
+        exportNotesButton.disableProperty().bind(task.runningProperty());
+    }
+
+    private void unbindExportControls() {
+        mainLoadingSpinner.visibleProperty().unbind();
+        exportNotesButton.disableProperty().unbind();
     }
 
     /**

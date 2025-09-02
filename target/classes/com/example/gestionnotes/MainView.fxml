@@ -92,11 +92,15 @@
                     </Button>
                 </HBox>
 
-                <FlowPane fx:id="studentCardsContainer" hgap="8" vgap="8" styleClass="student-cards-container" VBox.vgrow="ALWAYS">
-                    <padding>
-                        <Insets bottom="10.0" left="5.0" right="5.0" top="5.0" />
-                    </padding>
-                </FlowPane>
+                <ScrollPane VBox.vgrow="ALWAYS" fitToWidth="true" styleClass="student-scroll-pane">
+                    <content>
+                        <FlowPane fx:id="studentCardsContainer" hgap="8" vgap="8" styleClass="student-cards-container">
+                            <padding>
+                                <Insets bottom="10.0" left="5.0" right="5.0" top="5.0" />
+                            </padding>
+                        </FlowPane>
+                    </content>
+                </ScrollPane>
             </VBox>
 
             <!-- Right side with tabs -->
@@ -227,7 +231,9 @@
                             <FontAwesomeIconView glyphName="USERS" size="16" />
                         </graphic>
                         <content>
-                            <fx:include fx:id="studentView" source="/com/example/gestionnotes/StudentView.fxml" />
+                            <VBox>
+                                <fx:include fx:id="studentView" source="/com/example/gestionnotes/StudentView.fxml" VBox.vgrow="ALWAYS" />
+                            </VBox>
                         </content>
                     </Tab>
                 </tabs>

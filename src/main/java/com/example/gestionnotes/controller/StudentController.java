@@ -1,17 +1,25 @@
 package com.example.gestionnotes.controller;
 
 import com.example.gestionnotes.dao.EtudiantDAO;
+import com.example.gestionnotes.dao.NoteDAO;
 import com.example.gestionnotes.model.Etudiant;
+import de.jensd.fx.glyphs.fontawesome.FontAwesomeIcon;
+import de.jensd.fx.glyphs.fontawesome.FontAwesomeIconView;
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
+import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 
-import java.io.File;
+import java.io.*;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
@@ -56,6 +64,7 @@ public class StudentController {
     private Label statusMessageLabel;
 
     private EtudiantDAO etudiantDAO;
+    private NoteDAO noteDAO;
     private MainController mainController;
 
     private Etudiant selectedEtudiant;
@@ -63,16 +72,44 @@ public class StudentController {
     @FXML
     public void initialize() {
         etudiantDAO = new EtudiantDAO();
+        noteDAO = new NoteDAO();
 
-        studentIdColumn.setCellValueFactory(new PropertyValueFactory<>("id"));
-        studentNomColumn.setCellValueFactory(new PropertyValueFactory<>("nom"));
-        studentPrenomColumn.setCellValueFactory(new PropertyValueFactory<>("prenom"));
-        studentFiliereColumn.setCellValueFactory(new PropertyValueFactory<>("filiere"));
+        setupTable();
+        setupIcons();
+        setupPlaceholders();
 
         studentTableView.getSelectionModel().selectedItemProperty().addListener(
                 (observable, oldValue, newValue) -> showStudentDetails(newValue));
 
         loadStudentsTask();
+    }
+
+    private void setupTable() {
+        studentIdColumn.setCellValueFactory(new PropertyValueFactory<>("id"));
+        studentNomColumn.setCellValueFactory(new PropertyValueFactory<>("nom"));
+        studentPrenomColumn.setCellValueFactory(new PropertyValueFactory<>("prenom"));
+        studentFiliereColumn.setCellValueFactory(new PropertyValueFactory<>("filiere"));
+    }
+
+    private void setupIcons() {
+        addStudentButton.setGraphic(new FontAwesomeIconView(FontAwesomeIcon.USER_PLUS));
+        updateStudentButton.setGraphic(new FontAwesomeIconView(FontAwesomeIcon.EDIT));
+        deleteStudentButton.setGraphic(new FontAwesomeIconView(FontAwesomeIcon.USER_TIMES));
+        clearFieldsButton.setGraphic(new FontAwesomeIconView(FontAwesomeIcon.ERASER));
+        importCsvButton.setGraphic(new FontAwesomeIconView(FontAwesomeIcon.UPLOAD));
+        exportCsvButton.setGraphic(new FontAwesomeIconView(FontAwesomeIcon.DOWNLOAD));
+    }
+
+    private void setupPlaceholders() {
+        FontAwesomeIconView icon = new FontAwesomeIconView(FontAwesomeIcon.USERS);
+        icon.setSize("3em");
+        icon.getStyleClass().add("glyph-icon");
+
+        Label placeholderLabel = new Label("Aucun étudiant à afficher.");
+        VBox placeholder = new VBox(10, icon, placeholderLabel);
+        placeholder.getStyleClass().add("empty-placeholder");
+        placeholder.setAlignment(Pos.CENTER);
+        studentTableView.setPlaceholder(placeholder);
     }
 
     public void setMainController(MainController mainController) {
@@ -89,16 +126,16 @@ public class StudentController {
 
         task.setOnSucceeded(event -> {
             studentTableView.setItems(FXCollections.observableArrayList(task.getValue()));
+            unbindControls();
         });
 
         task.setOnFailed(event -> {
             task.getException().printStackTrace();
-            // Show error message
+            showStatusMessage("Erreur: Impossible de charger les étudiants.", "status-error", 5);
+            unbindControls();
         });
 
-        loadingSpinner.visibleProperty().bind(task.runningProperty());
-        studentTableView.disableProperty().bind(task.runningProperty());
-
+        bindControlsToTask(task);
         new Thread(task).start();
     }
 
@@ -112,22 +149,29 @@ public class StudentController {
 
         task.setOnSucceeded(event -> {
             if (task.getValue()) {
-                // show success message
-                loadStudentsTask(); // Refresh this table
+                showStatusMessage(successMessage, "status-success", 3);
+                loadStudentsTask();
                 if (mainController != null) {
-                    mainController.refreshStudentView(); // Refresh main view
+                    mainController.refreshStudentView();
                 }
                 clearFields();
             } else {
-                // show failure message
+                showStatusMessage("Erreur: L'opération a échoué.", "status-error", 3);
             }
+            unbindControls();
         });
 
         task.setOnFailed(event -> {
             task.getException().printStackTrace();
-            // show error message
+            showStatusMessage("Erreur: L'opération a échoué.", "status-error", 5);
+            unbindControls();
         });
 
+        bindControlsToTask(task);
+        new Thread(task).start();
+    }
+
+    private void bindControlsToTask(Task<?> task) {
         loadingSpinner.visibleProperty().bind(task.runningProperty());
         studentTableView.disableProperty().bind(task.runningProperty());
         nomTextField.disableProperty().bind(task.runningProperty());
@@ -136,8 +180,21 @@ public class StudentController {
         addStudentButton.disableProperty().bind(task.runningProperty());
         updateStudentButton.disableProperty().bind(task.runningProperty());
         deleteStudentButton.disableProperty().bind(task.runningProperty());
+        importCsvButton.disableProperty().bind(task.runningProperty());
+        exportCsvButton.disableProperty().bind(task.runningProperty());
+    }
 
-        new Thread(task).start();
+    private void unbindControls() {
+        loadingSpinner.visibleProperty().unbind();
+        studentTableView.disableProperty().unbind();
+        nomTextField.disableProperty().unbind();
+        prenomTextField.disableProperty().unbind();
+        filiereTextField.disableProperty().unbind();
+        addStudentButton.disableProperty().unbind();
+        updateStudentButton.disableProperty().unbind();
+        deleteStudentButton.disableProperty().unbind();
+        importCsvButton.disableProperty().unbind();
+        exportCsvButton.disableProperty().unbind();
     }
 
     @FXML
@@ -161,6 +218,15 @@ public class StudentController {
     @FXML
     private void handleDeleteStudent() {
         if (selectedEtudiant != null) {
+            if (noteDAO.getNoteCountForStudent(selectedEtudiant.getId()) > 0) {
+                Alert alert = new Alert(Alert.AlertType.ERROR);
+                alert.setTitle("Erreur de suppression");
+                alert.setHeaderText("Impossible de supprimer l'étudiant");
+                alert.setContentText("Cet étudiant a des notes associées. Veuillez d'abord supprimer ses notes.");
+                alert.showAndWait();
+                return;
+            }
+
             Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
             alert.setTitle("Confirmation de suppression");
             alert.setHeaderText("Supprimer l'étudiant ?");
@@ -210,11 +276,105 @@ public class StudentController {
 
     @FXML
     private void handleImportCsv() {
-        // Implementation for CSV import
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Importer un fichier CSV");
+        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Fichiers CSV", "*.csv"));
+        File file = fileChooser.showOpenDialog(new Stage());
+
+        if (file != null) {
+            Task<Integer> importTask = new Task<>() {
+                @Override
+                protected Integer call() throws Exception {
+                    List<Etudiant> etudiants = new ArrayList<>();
+                    try (BufferedReader br = new BufferedReader(new FileReader(file))) {
+                        String line;
+                        br.readLine(); // Skip header
+                        while ((line = br.readLine()) != null) {
+                            String[] values = line.split(",");
+                            if (values.length >= 3) {
+                                etudiants.add(new Etudiant(0, values[0].trim(), values[1].trim(), values[2].trim()));
+                            }
+                        }
+                    }
+                    if (!etudiants.isEmpty()) {
+                        etudiantDAO.addEtudiants(etudiants);
+                    }
+                    return etudiants.size();
+                }
+            };
+
+            importTask.setOnSucceeded(event -> {
+                int count = importTask.getValue();
+                showStatusMessage(count + " étudiant(s) importé(s) avec succès.", "status-success", 3);
+                loadStudentsTask();
+                if (mainController != null) {
+                    mainController.refreshStudentView();
+                }
+                unbindControls();
+            });
+
+            importTask.setOnFailed(event -> {
+                importTask.getException().printStackTrace();
+                showStatusMessage("Erreur lors de l'importation du CSV.", "status-error", 5);
+                unbindControls();
+            });
+
+            bindControlsToTask(importTask);
+            new Thread(importTask).start();
+        }
     }
 
     @FXML
     private void handleExportCsv() {
-        // Implementation for CSV export
+        FileChooser fileChooser = new FileChooser();
+        fileChooser.setTitle("Exporter vers un fichier CSV");
+        fileChooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("Fichiers CSV", "*.csv"));
+        File file = fileChooser.showSaveDialog(new Stage());
+
+        if (file != null) {
+            Task<Void> exportTask = new Task<>() {
+                @Override
+                protected Void call() throws Exception {
+                    List<Etudiant> etudiants = etudiantDAO.getAllEtudiants();
+                    try (BufferedWriter writer = new BufferedWriter(new FileWriter(file))) {
+                        writer.write("Nom,Prenom,Filiere");
+                        writer.newLine();
+                        for (Etudiant etudiant : etudiants) {
+                            writer.write(String.join(",", etudiant.getNom(), etudiant.getPrenom(), etudiant.getFiliere()));
+                            writer.newLine();
+                        }
+                    }
+                    return null;
+                }
+            };
+
+            exportTask.setOnSucceeded(event -> {
+                showStatusMessage("Exportation CSV réussie.", "status-success", 3);
+                unbindControls();
+            });
+
+            exportTask.setOnFailed(event -> {
+                exportTask.getException().printStackTrace();
+                showStatusMessage("Erreur lors de l'exportation CSV.", "status-error", 5);
+                unbindControls();
+            });
+
+            bindControlsToTask(exportTask);
+            new Thread(exportTask).start();
+        }
+    }
+
+    private void showStatusMessage(String message, String styleClass, int durationSeconds) {
+        statusMessageLabel.setText(message);
+        statusMessageLabel.getStyleClass().clear();
+        statusMessageLabel.getStyleClass().add("status-message");
+        statusMessageLabel.getStyleClass().add(styleClass);
+
+        Timeline timeline = new Timeline(new KeyFrame(Duration.seconds(durationSeconds), event -> {
+            statusMessageLabel.setText("");
+            statusMessageLabel.getStyleClass().clear();
+            statusMessageLabel.getStyleClass().add("status-message");
+        }));
+        timeline.play();
     }
 }

@@ -4,6 +4,7 @@ com\example\gestionnotes\model\Note.class
 com\example\gestionnotes\controller\MainController$1.class
 com\example\gestionnotes\model\Etudiant.class
 com\example\gestionnotes\Main.class
+com\example\gestionnotes\controller\StudentController$3.class
 com\example\gestionnotes\controller\MainController$5.class
 com\example\gestionnotes\dao\EtudiantDAO.class
 com\example\gestionnotes\dao\NoteDAO.class
@@ -11,5 +12,6 @@ com\example\gestionnotes\controller\MainController$2.class
 com\example\gestionnotes\controller\StudentController.class
 com\example\gestionnotes\controller\MainController$4.class
 com\example\gestionnotes\controller\StudentController$1.class
+com\example\gestionnotes\controller\StudentController$4.class
 com\example\gestionnotes\dao\DBConnection.class
 com\example\gestionnotes\controller\MainController$3.class

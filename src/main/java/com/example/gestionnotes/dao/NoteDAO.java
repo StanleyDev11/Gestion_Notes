@@ -109,4 +109,20 @@ public class NoteDAO {
             return false;
         }
     }
+
+    public int getNoteCountForStudent(int etudiantId) {
+        String sql = "SELECT COUNT(*) FROM note WHERE etudiant_id = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, etudiantId);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
 }

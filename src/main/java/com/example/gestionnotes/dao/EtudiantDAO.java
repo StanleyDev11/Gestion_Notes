@@ -160,4 +160,29 @@ public class EtudiantDAO {
             return false;
         }
     }
+
+    public boolean addEtudiants(List<Etudiant> etudiants) {
+        String sql = "INSERT INTO etudiant (nom, prenom, filiere) VALUES (?, ?, ?)";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+            conn.setAutoCommit(false); // Start transaction
+
+            for (Etudiant etudiant : etudiants) {
+                pstmt.setString(1, etudiant.getNom());
+                pstmt.setString(2, etudiant.getPrenom());
+                pstmt.setString(3, etudiant.getFiliere());
+                pstmt.addBatch();
+            }
+
+            pstmt.executeBatch();
+            conn.commit(); // Commit transaction
+            return true;
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            // Consider rolling back in a real app
+            return false;
+        }
+    }
 }
